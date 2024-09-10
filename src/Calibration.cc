@@ -149,34 +149,134 @@ void ISSCalibration::ReadCalibration() {
 	fCaenThreshold.resize( set->GetNumberOfCAENModules() );
 	fCaenTime.resize( set->GetNumberOfCAENModules() );
 	fCaenType.resize( set->GetNumberOfCAENModules() );
-
+	
 	fCaenOffsetDefault = 0.0;
 	fCaenGainDefault = 1.0;
 	fCaenGainQuadrDefault = 0.0;
-
+	
 	// CAEN parameter read
 	for( unsigned int mod = 0; mod < set->GetNumberOfCAENModules(); mod++ ){
-
+		
 		fCaenOffset[mod].resize( set->GetNumberOfCAENChannels() );
 		fCaenGain[mod].resize( set->GetNumberOfCAENChannels() );
 		fCaenGainQuadr[mod].resize( set->GetNumberOfCAENChannels() );
 		fCaenThreshold[mod].resize( set->GetNumberOfCAENChannels() );
 		fCaenTime[mod].resize( set->GetNumberOfCAENChannels() );
 		fCaenType[mod].resize( set->GetNumberOfCAENChannels() );
-
+		
 		for( unsigned int chan = 0; chan < set->GetNumberOfCAENChannels(); chan++ ){
-
+			
 			fCaenOffset[mod][chan] = config->GetValue( Form( "caen_%d_%d.Offset", mod, chan ), fCaenOffsetDefault );
 			fCaenGain[mod][chan] = config->GetValue( Form( "caen_%d_%d.Gain", mod, chan ), fCaenGainDefault );
 			fCaenGainQuadr[mod][chan] = config->GetValue( Form( "caen_%d_%d.GainQuadr", mod, chan ), fCaenGainQuadrDefault );
 			fCaenThreshold[mod][chan] = config->GetValue( Form( "caen_%d_%d.Threshold", mod, chan ), 0 );
 			fCaenTime[mod][chan] = config->GetValue( Form( "caen_%d_%d.Time", mod,  chan ), 0.0 );
 			fCaenType[mod][chan] = config->GetValue( Form( "caen_%d_%d.Type", mod,  chan ), "Qlong" );
+			if( fCaenType[mod][chan] != "Qlong" &&
+			    fCaenType[mod][chan] != "Qshort" &&
+			    fCaenType[mod][chan] != "Qdiff" ) {
+				std::cerr << "Incorrect CAEN energy type, must be Qlong, Qshort or Qdiff. ";
+				std::cerr << "Defaulting to Qlong" << std::endl;
+				fCaenType[mod][chan] = "Qlong";
+			}
 
 		}
 		
 	}
+	
+	// Mesytec initialisation
+	fMesyOffset.resize( set->GetNumberOfMesytecModules() );
+	fMesyGain.resize( set->GetNumberOfMesytecModules() );
+	fMesyGainQuadr.resize( set->GetNumberOfMesytecModules() );
+	fMesyThreshold.resize( set->GetNumberOfMesytecModules() );
+	fMesyTime.resize( set->GetNumberOfMesytecModules() );
+	fMesyType.resize( set->GetNumberOfMesytecModules() );
 
+	fMesyOffsetDefault = 0.0;
+	fMesyGainDefault = 1.0;
+	fMesyGainQuadrDefault = 0.0;
+	
+	// Mesytec parameter read
+	for( unsigned int mod = 0; mod < set->GetNumberOfMesytecModules(); mod++ ){
+		
+		fMesyOffset[mod].resize( set->GetNumberOfMesytecChannels() );
+		fMesyGain[mod].resize( set->GetNumberOfMesytecChannels() );
+		fMesyGainQuadr[mod].resize( set->GetNumberOfMesytecChannels() );
+		fMesyThreshold[mod].resize( set->GetNumberOfMesytecChannels() );
+		fMesyTime[mod].resize( set->GetNumberOfMesytecChannels() );
+		fMesyType[mod].resize( set->GetNumberOfMesytecChannels() );
+
+		for( unsigned int chan = 0; chan < set->GetNumberOfMesytecChannels(); chan++ ){
+			
+			fMesyOffset[mod][chan] = config->GetValue( Form( "mesy_%d_%d.Offset", mod, chan ), fMesyOffsetDefault );
+			fMesyGain[mod][chan] = config->GetValue( Form( "mesy_%d_%d.Gain", mod, chan ), fMesyGainDefault );
+			fMesyGainQuadr[mod][chan] = config->GetValue( Form( "mesy_%d_%d.GainQuadr", mod, chan ), fMesyGainQuadrDefault );
+			fMesyThreshold[mod][chan] = config->GetValue( Form( "mesy_%d_%d.Threshold", mod, chan ), 0 );
+			fMesyTime[mod][chan] = config->GetValue( Form( "mesy_%d_%d.Time", mod,  chan ), 0.0 );
+			fMesyType[mod][chan] = config->GetValue( Form( "mesy_%d_%d.Type", mod,  chan ), "Qlong" );
+			if( fMesyType[mod][chan] != "Qlong" &&
+				fMesyType[mod][chan] != "Qshort" &&
+				fMesyType[mod][chan] != "Qdiff" ) {
+				std::cerr << "Incorrect Mesytec energy type, must be Qlong, Qshort or Qdiff. ";
+				std::cerr << "Defaulting to Qlong" << std::endl;
+				fMesyType[mod][chan] = "Qlong";
+			}
+
+		}
+		
+	}
+	
+	// Get Time-walk graphs
+	tw_graph.resize( set->GetNumberOfArrayModules()  );
+	twgraphfile.resize( set->GetNumberOfArrayModules()  );
+	twgraphname.resize( set->GetNumberOfArrayModules()  );
+
+	for( unsigned int mod = 0; mod < set->GetNumberOfArrayModules(); mod++ ){
+
+		tw_graph[mod].resize( set->GetNumberOfArrayASICs() );
+		twgraphfile[mod].resize( set->GetNumberOfArrayASICs() );
+		twgraphname[mod].resize( set->GetNumberOfArrayASICs() );
+
+		for( unsigned int asic = 0; asic < set->GetNumberOfArrayASICs(); asic++ ){
+			
+			tw_graph[mod][asic].resize( HitN );
+			twgraphfile[mod][asic].resize( HitN );
+			twgraphname[mod][asic].resize( HitN );
+
+			for( unsigned int i = 0; i < HitN; i++ ) {
+
+				twgraphfile[mod][asic][i] = config->GetValue( Form( "asic_%d_%d.WalkFile.Hit%d", mod, asic, i ), "NULL" );
+				twgraphname[mod][asic][i] = config->GetValue( Form( "asic_%d_%d.WalkName.Hit%d", mod, asic, i ), "Graph" );
+				
+				// Check if it is given by the user
+				if( twgraphfile[mod][asic][i] != "NULL" ) {
+					
+					TFile *tw_file = new TFile( twgraphfile[mod][asic][i].data(), "READ" );
+					if( tw_file->IsZombie() )
+						std::cout << "Couldn't open " << twgraphfile[mod][asic][i] << " correctly" << std::endl;
+					
+					else {
+						
+						if( !tw_file->GetListOfKeys()->Contains( twgraphname[mod][asic][i].data() ) )
+							std::cout << "Couldn't find " << twgraphname[mod][asic][i] << " in " << twgraphfile[mod][asic][i] << std::endl;
+						else
+							tw_graph[mod][asic][i] = std::make_shared<TGraph>( *static_cast<TGraph*>( tw_file->Get( twgraphname[mod][asic][i].data() )->Clone() ) );
+						
+					}
+					
+					tw_file->Close();
+					
+				}
+
+				// Assign an empty graph file if none is given, so the code doesn't crash
+				if( !tw_graph[mod][asic][i] ) tw_graph[mod][asic][i] = std::make_shared<TGraph>();
+
+			} // hit-bit
+
+		} // asic
+		
+	} // mod
+	
 	delete config;
 	
 }
@@ -286,71 +386,102 @@ float ISSCalibration::AsicWalk( unsigned int mod, unsigned int asic, float energ
 	if( mod < set->GetNumberOfArrayModules() &&
 	   asic < set->GetNumberOfArrayASICs() ) {
 		
-		// Check if all values are defaulted to zero - no walk correction
-		bool nowalk = true;
-		for( unsigned int i = 0; i < nwalkpars; i++ ) {
-			
-			if( ( TMath::Abs( fAsicWalkHit0[mod][asic][i] ) > 1.0e-6 && !hit ) ||
-			    ( TMath::Abs( fAsicWalkHit1[mod][asic][i] ) > 1.0e-6 &&  hit ) )
-				nowalk = false;
-			   
-		}
-			   
-		// If no walk correction, just return 0
-		if( nowalk ) return 0.0;
+		
+		if( fAsicWalkType[mod][asic] == 2 ) {
 
-		// else calculate the walk using the defined function
-		else {
-			
-			// Params for time walk function ROOT finder
-			for( unsigned int i = 0; i < nwalkpars; i++ ){
+			if( hit )walk = -tw_graph[mod][asic][1]->Eval(energy);
+			else walk = -tw_graph[mod][asic][0]->Eval(energy);
+
+		}
+
+		else{
+			// Check if all values are defaulted to zero - no walk correction
+			bool nowalk = true;
+			for( unsigned int i = 0; i < nwalkpars; i++ ) {
 				
-				if( hit ) walk_params[i] = fAsicWalkHit1[mod][asic][i];
-				else walk_params[i] = fAsicWalkHit0[mod][asic][i];
+				if( ( TMath::Abs( fAsicWalkHit0[mod][asic][i] ) > 1.0e-6 && !hit ) ||
+					( TMath::Abs( fAsicWalkHit1[mod][asic][i] ) > 1.0e-6 &&  hit ) )
+					nowalk = false;
 				
 			}
 				
-			// Last one is always the energy
-			walk_params[nwalkpars] = energy;
-			
-			// Annie Dolan's function
-			if( fAsicWalkType[mod][asic] == 0 ) {
+			// If no walk correction, just return 0
+			if( nowalk ) return 0.0;
+
+			// else calculate the walk using the defined function
+			else {
 				
-				// Set parameters
-				fa->SetParameters( walk_params );
-				fb->SetParameters( walk_params );
-				
-				// Build the function and derivative, then solve
-				gErrorIgnoreLevel = kBreak; // suppress warnings and errors, but not breaks
-				ROOT::Math::GradFunctor1D wf( *fa, *fb );
-				rf->SetFunction( wf, -2e4, 2e4 ); // limits
-				rf->Solve( 500, 1e-4, 1e-5 );
-				
-				// Check result
-				if( rf->Status() ){
-					walk = TMath::QuietNaN();
+				// Params for time walk function ROOT finder
+				for( unsigned int i = 0; i < nwalkpars; i++ ){
+					
+					if( hit ) walk_params[i] = fAsicWalkHit1[mod][asic][i];
+					else walk_params[i] = fAsicWalkHit0[mod][asic][i];
+					
 				}
-				else walk = rf->Root();
-				gErrorIgnoreLevel = kInfo; // print info and above again
+					
+				// Last one is always the energy
+				walk_params[nwalkpars] = energy;
+				
+				// Annie Dolan's function
+				if( fAsicWalkType[mod][asic] == 0 ) {
+					
+					// Set parameters
+					fa->SetParameters( walk_params );
+					fb->SetParameters( walk_params );
+					
+					// Build the function and derivative, then solve
+					gErrorIgnoreLevel = kBreak; // suppress warnings and errors, but not breaks
+					ROOT::Math::GradFunctor1D wf( *fa, *fb );
+					rf->SetFunction( wf, -2e4, 2e4 ); // limits
+					rf->Solve( 500, 1e-4, 1e-5 );
+					
+					// Check result
+					if( rf->Status() ){
+						walk = TMath::QuietNaN();
+					}
+					else walk = rf->Root();
+					gErrorIgnoreLevel = kInfo; // print info and above again
+					
+				}
+				
+				// Sam Reeve's function
+				if( fAsicWalkType[mod][asic] == 1 ) {
+				
+					// Functional form: y = a + b / (c*E)^d
+					// where y is time walk and E is energy
+					walk = walk_params[1];
+					walk /= TMath::Power( walk_params[2]*walk_params[4], walk_params[3] );
+					walk += walk_params[0];
+					
+					
+					// Find limit inside event window
+					// Solved for time walk = 3000 ns
+					// E = ( b / (y - a) )^(1/d) / c
+					double E_limit;
+					double dT_limit = 3000;
+					E_limit = walk_params[1];
+					E_limit /= dT_limit - walk_params[0];
+					E_limit = TMath::Power( E_limit, 1/walk_params[3] );
+					E_limit /= walk_params[2];
+					E_limit = TMath::Abs(E_limit);
+					
+					// Add minus as the correction is added to time in EventBuilder
+					if( walk_params[4] < E_limit ){
+						walk = -3000;
+					}
+					else{
+						walk = -walk;
+					}
+					
+				}
 				
 			}
-			
-			// Sam Reeve's function
-			if( fAsicWalkType[mod][asic] == 1 ) {
-			
-				// Functional form: E = a + b / ( c - d*x )
-				// Solved for x, where x is time walk and E is energy
-				// x = ( c + b / ( a - E ) ) / d
-				walk = walk_params[1];
-				walk /= walk_params[0] - walk_params[4];
-				walk += walk_params[2];
-				walk /= walk_params[3];
 
-			}
-			
 		}
-				
+
 	}
+
+
 	
 	return walk;
 	
@@ -445,6 +576,97 @@ std::string ISSCalibration::CaenType( unsigned int mod, unsigned int chan ){
 	return 0;
 	
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// Calculates the energy on a particular Mesytec detector. Also adds a small random
+/// number to remove binning issues
+/// \param[in] mod The number of the Mesytec module
+/// \param[in] chan The channel number on the Mesytec module
+/// \param[in] raw The raw energy recorded on this detector
+/// \returns Calibrated energy (if parameters are set), the raw energy (if
+/// parameters are not set), or -1 (if the mod, asic, or channel are out of range)
+float ISSCalibration::MesytecEnergy( unsigned int mod, unsigned int chan, int raw ) {
+	
+	float energy, raw_rand;
+	
+	//std::cout << "mod=" << mod << "; chan=" << chan << std::endl;
+	
+	if( mod < set->GetNumberOfMesytecModules() &&
+	   chan < set->GetNumberOfMesytecChannels() ) {
+		
+		raw_rand = raw + 0.5 - fRand->Uniform();
+		
+		energy = 0;
+		energy =  fMesyGainQuadr[mod][chan] * raw_rand * raw_rand;
+		energy += fMesyGain[mod][chan] * raw_rand;
+		energy += fMesyOffset[mod][chan];
+		
+		// Check if we have defaults
+		if( TMath::Abs( fMesyGainQuadr[mod][chan] ) < 1e-6 &&
+		    TMath::Abs( fMesyGain[mod][chan] - 1.0 ) < 1e-6 &&
+		    TMath::Abs( fMesyOffset[mod][chan] ) < 1e-6 )
+			
+			return raw;
+		
+		else return energy;
+		
+	}
+	
+	return -1;
+	
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// Getter for the Mesytec threshold
+/// \param[in] mod The number of the Mesytec module
+/// \param[in] chan The channel number of the detector
+unsigned int ISSCalibration::MesytecThreshold( unsigned int mod, unsigned int chan ) {
+	
+	if( mod < set->GetNumberOfMesytecModules() &&
+	   chan < set->GetNumberOfMesytecChannels() ) {
+		
+		return fMesyThreshold[mod][chan];
+		
+	}
+	
+	return -1;
+	
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// Getter for the Mesytec time
+/// \param[in] mod The number of the Mesytec module
+/// \param[in] chan The channel number of the detector
+long double ISSCalibration::MesytecTime( unsigned int mod, unsigned int chan ){
+	
+	if( mod < set->GetNumberOfMesytecModules() &&
+	   chan < set->GetNumberOfMesytecChannels() ) {
+		
+		return fMesyTime[mod][chan];
+		
+	}
+	
+	return 0;
+	
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// Getter for the Mesytec type = the type of
+/// \param[in] mod The number of the Mesytec module
+/// \param[in] chan The channel number of the detector
+std::string ISSCalibration::MesytecType( unsigned int mod, unsigned int chan ){
+	
+	if( mod < set->GetNumberOfMesytecModules() &&
+	   chan < set->GetNumberOfMesytecChannels() ) {
+		
+		return fMesyType[mod][chan];
+		
+	}
+	
+	return 0;
+	
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Prints the calibration to a specified output

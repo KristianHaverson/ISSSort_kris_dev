@@ -103,6 +103,7 @@ public:
 	void ElumFinder(); ///< Processes all hits on the ELUM that fall within the build window
 	void ZeroDegreeFinder(); ///< Processes all hits on the zero-degree detector that fall within the build window
 	void GammaRayFinder(); ///< Processes hits in the ScintArray and maybe HPGe in the future
+	void LumeFinder(); ///< Processes all hits on the LUME that fall within the build window
 		
 	inline TFile* GetFile(){ return output_file; }; ///< Getter for the output_file pointer
 	inline TTree* GetTree(){ return output_tree; }; ///< Getter for the output tree pointer
@@ -131,14 +132,14 @@ public:
 private:
 	
 	/// Input treze
-	TFile *input_file; ///< Pointer to the time-sorted input ROOT file
-	TTree *input_tree; ///< Pointer to the TTree in the data input file
-	TTree *nptool_tree; ///< Pointer to the TTree in the simulation input file
-	ISSDataPackets *in_data = nullptr; ///< Pointer to the TBranch containing the data in the time-sorted input ROOT file
-	TIssData *sim_data = nullptr; ///< Pointer to the TBranch containing the data in the NPTool input file
-	std::shared_ptr<ISSAsicData> asic_data; ///< Pointer to a given entry in the tree of some data from the ASICs
-	std::shared_ptr<ISSCaenData> caen_data; ///< Pointer to a given entry in the tree of some data from the CAEN
-	std::shared_ptr<ISSInfoData> info_data; ///< Pointer to a given entry in the tree of the "info" datatype
+	TFile *input_file;							///< Pointer to the time-sorted input ROOT file
+	TTree *input_tree;							///< Pointer to the TTree in the data input file
+	TTree *nptool_tree;							///< Pointer to the TTree in the simulation input file
+	ISSDataPackets *in_data = nullptr;			///< Pointer to the TBranch containing the data in the time-sorted input ROOT file
+	TIssData *sim_data = nullptr;				///< Pointer to the TBranch containing the data in the NPTool input file
+	std::shared_ptr<ISSAsicData> asic_data;		///< Pointer to a given entry in the tree of some data from the ASICs
+	std::shared_ptr<ISSVmeData> vme_data;		///< Pointer to a given entry in the tree of generic VME data from CAEN or Mesytec
+	std::shared_ptr<ISSInfoData> info_data;		///< Pointer to a given entry in the tree of the "info" datatype
 
 	/// Event structures
 	std::shared_ptr<ISSArrayEvt> array_evt;
@@ -148,6 +149,7 @@ private:
 	std::shared_ptr<ISSElumEvt> elum_evt;
 	std::shared_ptr<ISSZeroDegreeEvt> zd_evt;
 	std::shared_ptr<ISSGammaRayEvt> gamma_evt;
+	std::shared_ptr<ISSLumeEvt> lume_evt;
 
 	/// Outputs
 	TFile *output_file; ///< Pointer to the output ROOT file containing events
@@ -203,22 +205,24 @@ private:
 	double		laser_prev;	///< Holds time of previous Laser status pulse
 	double		caen_time;	///< Time from the caen DAQ
 	double		caen_prev;	///< Holds previous time from the CAEN DAQ
-	std::vector<double> fpga_time; 			///< FPGA time on a given module of the array
-	std::vector<double> fpga_prev;				///< Previous FPGA time on a given module of the array
-	std::vector<double> asic_time;				///< ASIC time on a given module of the array
-	std::vector<double> asic_prev;				///< Previous ASIC time on a given module of the array
-	std::vector<double> pause_time;			///< The pause time on a given module of the array
-	std::vector<double> resume_time;			///< The resume time on a given module of the array
-	std::vector<double> asic_dead_time;		///< ASIC dead time for a given module of the array
-	std::vector<double> asic_time_start;		///< Holds the time of the first hit on each asic in the input time-sorted tree (index denotes asic module)
-	std::vector<double> asic_time_stop;		///< Holds the time of the last hit on each asic in the input time-sorted tree (index denotes asic module)
-	std::vector<double> caen_time_start;		///< Holds the time of the first hit on each caen in the input time-sorted tree (index denotes caen module)
-	std::vector<double> caen_time_stop;		///< Holds the time of the last hit on each asic in the input time-sorted tree (index denotes caen module)
+	std::vector<double> fpga_time; 						///< FPGA time on a given module of the array
+	std::vector<double> fpga_prev;						///< Previous FPGA time on a given module of the array
+	std::vector<double> asic_time;						///< ASIC time on a given module of the array
+	std::vector<double> asic_prev;						///< Previous ASIC time on a given module of the array
+	std::vector<double> pause_time;						///< The pause time on a given module of the array
+	std::vector<double> resume_time;					///< The resume time on a given module of the array
+	std::vector<double> asic_dead_time;					///< ASIC dead time for a given module of the array
+	std::vector<double> asic_time_start;				///< Holds the time of the first hit on each asic in the input time-sorted tree (index denotes asic module)
+	std::vector<double> asic_time_stop;					///< Holds the time of the last hit on each asic in the input time-sorted tree (index denotes asic module)
+	std::vector<std::vector<double>> vme_time_start;	///< Holds the time of the first hit on each VME module in the input time-sorted tree (index denotes vme crate and module)
+	std::vector<std::vector<double>> vme_time_stop;		///< Holds the time of the last hit on each VME module in the input time-sorted tree (index denotes vme crate and module)
 
 	// Data variables - generic
+	unsigned char		myvme;		///< VME crate number
 	unsigned char		mymod;		///< module number
 	unsigned char		mych;		///< channel number
-	double			mytime;		///< absolute timestamp
+	double				mytime;		///< absolute timestamp
+	double				myCFDtime;	///< absolute timestamp for CFD in simulation
 	float 				myenergy;	///< calibrated energy
 	int 				mywalk;		///< time walk correction
 	bool				mythres;	///< above threshold?
@@ -234,15 +238,16 @@ private:
 	unsigned char		myid;		///< generic detector id
 	unsigned char		mysector;	///< 4 quadrants of the recoil, for example
 	unsigned char		mylayer;	///< 2 layers for the dE-E, for example
+	unsigned char		mytype;		///< type of detector (for LUME: be, ne, fe)
 
 
 	// Array variables
 	std::vector<float>			pen_list;	///< list of p-side energies for ParticleFinder
 	std::vector<float>			nen_list;	///< list of n-side energies for ParticleFinder
-	std::vector<double>	ptd_list;	///< list of p-side time differences for ParticleFinder without time walk correction
-	std::vector<double>	ntd_list;	///< list of n-side time differences for ParticleFinder without time walk correction
-	std::vector<double>	pwalk_list;	///< list of p-side time differences for ParticleFinder WITH time walk correction
-	std::vector<double>	nwalk_list;	///< list of n-side time differences for ParticleFinder WITH time walk correction
+	std::vector<double>			ptd_list;	///< list of p-side time differences for ParticleFinder without time walk correction
+	std::vector<double>			ntd_list;	///< list of n-side time differences for ParticleFinder without time walk correction
+	std::vector<double>			pwalk_list;	///< list of p-side time differences for ParticleFinder WITH time walk correction
+	std::vector<double>			nwalk_list;	///< list of n-side time differences for ParticleFinder WITH time walk correction
 	std::vector<char>			pid_list;	///< list of p-side strip ids
 	std::vector<char>			nid_list;	///< list of n-side strip ids
 	std::vector<char>			pmod_list;	///< list of p-side modules numbers
@@ -254,30 +259,41 @@ private:
 
 	// Recoil variables
 	std::vector<float>			ren_list;	///< list of recoil energies for RecoilFinder
-	std::vector<double>	rtd_list;	///< list of recoil time differences for RecoilFinder
+	std::vector<double>			rtd_list;	///< list of recoil time differences for RecoilFinder
 	std::vector<char>			rid_list;	///< list of recoil IDs/layers for RecoilFinder
 	std::vector<char>			rsec_list;	///< list of recoil sectors for RecoilFinder
 	
 	// MWPC variables
 	std::vector<unsigned short>	mwpctac_list;	///< TAC time from the MWPC
-	std::vector<double>	mwpctd_list;	///< list of ELUM time differences for ELUMFinder
+	std::vector<double>			mwpctd_list;	///< list of ELUM time differences for ELUMFinder
 	std::vector<char>			mwpcaxis_list;	///< list of axis IDs for the MWPC
 	std::vector<char>			mwpcid_list;	///< list of TAC IDs for the MWPC
 
 	// ELUM variables
 	std::vector<float>			een_list;	///< list of ELUM energies for ELUMFinder
-	std::vector<double>	etd_list;	///< list of ELUM time differences for ELUMFinder
+	std::vector<double>			etd_list;	///< list of ELUM time differences for ELUMFinder
 	std::vector<char>			esec_list;	///< list of ELUM sectors for ELUMFinder
 
 	// ZeroDegree variables
 	std::vector<float>			zen_list;	///< list of ZeroDegree energies for ELUMFinder
-	std::vector<double>	ztd_list;	///< list of ZeroDegree time differences for ELUMFinder
+	std::vector<double>			ztd_list;	///< list of ZeroDegree time differences for ELUMFinder
 	std::vector<char>			zid_list;	///< list of ZeroDegree IDs/layers for ELUMFinder
 
 	// ScintArray variables
 	std::vector<float>			saen_list;	///< list of ScintArray energies for GammaFinder
-	std::vector<double>	satd_list;	///< list of ScintArray time differences for GammaFinder
+	std::vector<double>			satd_list;	///< list of ScintArray time differences for GammaFinder
 	std::vector<char>			said_list;	///< list of ScintArray detectors ids for GammaFinder
+
+	// LUME variables. Each LUME is a position-sensitive silicon detector and has 3 readout channels: the total energy output at the back face (denoted here as be), and two energy readouts at both edges of the front face of a detector (ne and fe)
+	std::vector<float>		lbe_list;		///< list of LUME back energies (signal from the back face)
+	std::vector<float>		lne_list;		///< list of LUME ne signals
+	std::vector<float>		lfe_list;		///< list of LUME fe signals
+	std::vector<double>		lbe_td_list;	///< list of LUME time differences
+	std::vector<double>		lne_td_list;	///< list of LUME time differences
+	std::vector<double>		lfe_td_list;	///< list of LUME time differences
+	std::vector<char>		lbe_id_list;	///< list of LUME detectors
+	std::vector<char>		lne_id_list;	///< list of LUME detectors
+	std::vector<char>		lfe_id_list;	///< list of LUME detectors
 
 	// Counters
 	unsigned int		hit_ctr;		///< Counts the number of hits that make up an event within a given file
@@ -288,8 +304,10 @@ private:
 	unsigned int		elum_ctr;		///< Counts the number of ELUM events within a given file
 	unsigned int		zd_ctr;			///< Counts the number of zero-degree detector events within a given file
 	unsigned int		gamma_ctr;		///< Counts the number of Gamma-Ray events within a given file
+	unsigned int		lume_ctr;		///< Counts the number of LUME events within a given file
 	unsigned long		n_asic_data;	///< Counter for the number of asic data packets in a file
 	unsigned long		n_caen_data;	///< Counter for number of caen data packets in a file
+	unsigned long		n_mesy_data;	///< Counter for number of mesytec data packets in a file
 	unsigned long		n_info_data; 	///< Counter for number of info data packets in a file
 	unsigned long long	n_entries; 		///< Number of entries in the time-sorted data input tree
 	unsigned long		n_caen_pulser;	///< Number of caen pulser hits in the time-sorted data input tree
@@ -367,6 +385,9 @@ private:
 	TH2F *gamma_gamma_E;	///< Gamma-gamma matrix, no prompt time condition
 	TH1F *gamma_gamma_td;	///< Gamma-gamma time difference
 
+	// LUME histograms
+	std::vector<TH1F*> lume_E;		///< The LUME spectrum histogram
+	std::vector<TH2F*> lume_E_vs_x;	///< Energy vs hit position for LUME
 };
 
 #endif
